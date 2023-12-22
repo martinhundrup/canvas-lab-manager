@@ -65,7 +65,8 @@ class API:
             assignments = get_grade_book(course)
 
             if download_student_code:
-                download_submissions(course, self.course_dir, student_info, ta_info, assignments_list)
+                download_submissions(course, self.course_dir, student_info, ta_info, assignments_list,
+                                     gui, 100 / len(self.course_ids))
 
             final_scores = get_cumulative_score(course)
 
@@ -83,7 +84,7 @@ class API:
                 all_tas = pd.concat([all_tas, ta_info], ignore_index=True)
 
             # Update gui
-            if gui is not None:
+            if not download_student_code:
                 gui.set_progress_bar(100 / len(self.course_ids))
 
         # Copy late data
@@ -294,7 +295,7 @@ def process_submission(code_dir: pathlib.Path, zip_type: bool = False, zip7_type
 
 
 def download_submissions(course_instance: Course, course_dir: pathlib.Path,
-                         student_info: pd.DataFrame, ta_info: pd.DataFrame, assignments_list: list) -> None:
+                         student_info: pd.DataFrame, ta_info: pd.DataFrame, assignments_list: list, gui, step) -> None:
 
     course_assignments = course_instance.get_assignments()
     for course_assignment in course_assignments:
@@ -359,5 +360,8 @@ def download_submissions(course_instance: Course, course_dir: pathlib.Path,
 
             # Extract out code
             process_submission(code_dir / student_name, zip_type=zip_type, zip7_type=zip7_type)
+
+        # Update gui
+        gui.set_progress_bar(step / len(assignments_list))
 
     return

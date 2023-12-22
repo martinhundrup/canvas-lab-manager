@@ -105,11 +105,18 @@ def plot_histograms(class_name: pathlib.Path, results: dict) -> None:
 
         mean = results[assignment][['percent_1', 'percent_2']].max(axis=1).mean()
         std = results[assignment][['percent_1', 'percent_2']].max(axis=1).std()
-        ax[x][y].hist(results[assignment][['percent_1', 'percent_2']].max(axis=1), bins=20, range=(0, 100))
-        ax[x][y].axvline(mean + std, color='r')
-        ax[x][y].set_xlabel('Percent Same')
-        ax[x][y].set_ylabel('Number of Students')
-        ax[x][y].set_title(assignment)
+        if fig_size == 1:
+            ax.hist(results[assignment][['percent_1', 'percent_2']].max(axis=1), bins=20, range=(0, 100))
+            ax.axvline(min(mean + 1 * std, 80), color='r')
+            ax.set_xlabel('Percent Same')
+            ax.set_ylabel('Number of Students')
+            ax.set_title(assignment)
+        else:
+            ax[x][y].hist(results[assignment][['percent_1', 'percent_2']].max(axis=1), bins=20, range=(0, 100))
+            ax[x][y].axvline(mean + 1 * std, color='r')
+            ax[x][y].set_xlabel('Percent Same')
+            ax[x][y].set_ylabel('Number of Students')
+            ax[x][y].set_title(assignment)
 
     # Set title
     fig.suptitle(class_name.parent.name)

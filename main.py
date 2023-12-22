@@ -1,3 +1,5 @@
+import os
+import sys
 import pathlib
 
 from canvasapi import Canvas
@@ -99,8 +101,8 @@ def main():
             api.set_current_course(course, courses[course])
         elif selected_action == 'download_submissions':
             list_of_assignments = api.get_assignments()
-            gui.set_progress_bar(0)
             selected_assignments = gui.get_assignment_selection(list_of_assignments)
+            gui.set_progress_bar(0)
             api.download_information(download_student_code=True, assignments_list=selected_assignments, gui=gui)
             gui.set_progress_bar(0, reset=True)
         elif selected_action == 'run_moss':
@@ -126,4 +128,6 @@ def main():
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        os.chdir('docker')
     main()

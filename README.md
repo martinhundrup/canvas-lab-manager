@@ -62,18 +62,31 @@ docker/run_docker.sh
 
 # Data / results
 Results can be found in the term directory:
-    .
-    ├── CPTS_121.zip                 # Class to check through
-    │   ├──  john_doe                # TA First name then lest name
-    │      ├──  PA1.zip              # PA submission donwloaded from canvas and renamed properly
-    │         └──  studentcode.zip   # Student submission
-    │      ├── ...                   # Intermeddiate PAs
-    │      └── PAn.zip               # Last PA to check
-    │   ├──  ...                     # Intermediate TA names
-    │   └──  jane_deer               # Last TA name
-    │      ├──  PA1.zip              # PA submission donwloaded from canvas and renamed properly
-    │         └──  studentcode.zip   # Student submission
-    │      ├── ...                   # Intermeddiate PAs
-    │      └── PAn.zip               # Last PA to check
-    ├── ...                          # Intermeddiate classes
-    └── CPTS_122.zip                 # Last class to check
+
+    terms                                 # Directory to hold data by terms
+    ├── Fall_2023                         # Term directory: SEMESTER_YEAR
+    │   ├── CPTS_121                      # Directory to hold course data
+    │      ├── assignments                # Directory to store downloaded course assigments
+    │         ├── assignment_1            # Student submission
+    │            ├── TA_1                 # TA directories
+    │               ├── student_1         # Student directory
+    │                  └── student_code   # Student code dir  
+    │               └── ...   
+    │            └── ...   
+    │         └── ...   
+    │      ├── moss_output                # Holds output from moss runs
+    │         ├── assignment_1.txt        # Holds moss output for assignment
+    │         └── ...   
+    │      ├── plagiarism                 # Directory for plagiarism materials
+    │         ├── assignment_1.html       # Saved main moss website 
+    │         ├── ...                     #     Each asignment has its own file       
+    │         ├── course_name.xlsx        # Cheating spreadsheet
+    │         └── plots.html              # Directory holding plots for cheating analysis
+    │            ├── histogram.png        # Histogram showing distribution of cheating and cutoff mark
+    │            └── assignment_1.png     # Connected graph showing cheating groups
+    │      ├── grade_book.xlsx            # Grade book for course (check for all required columns) 
+    │      ├── late_status.png            # Indicates whether TAs are following late policy
+    │      ├── percent_graded.png         # Indicates TAs current grading status 
+    │      └── other_files                # Used internally, don't mess with                 
+    │   └── ...                           
+    └── ...                               

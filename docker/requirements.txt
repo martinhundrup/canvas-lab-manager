@@ -1,0 +1,9 @@
+canvasapi 
+pandas 
+numpy 
+py7zr 
+matplotlib 
+seaborn 
+beautifulsoup4 
+networkx
+openpyxl
