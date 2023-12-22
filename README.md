@@ -63,6 +63,16 @@ python main.py
 docker/run_docker.sh
 ```
 
+### Prompts:
+1. Enter your institutions canvas url
+2. Enter your canvas token
+3. Select which course to manage
+4. Select which actions to run (generally top to bottom)
+   1. You need to download submissions before running moss
+   2. You need to run moss before generating the cheating spreadsheet
+
+![alt text](resources/menu.png)
+
 # Data / results
 Results can be found in the term directory:
 
