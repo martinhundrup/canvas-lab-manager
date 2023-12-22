@@ -17,7 +17,10 @@ mail username@domain
 ```
 where *username@domain* is your email address.
 
-2. Place the moss file in the project base with the moss file sent via email.
+2. Place the moss file (sent via email) in the project base.
+```commandline
+canvas-lab-manager/moss
+```
 
 # Installation - Docker
 1. Run the following commands
