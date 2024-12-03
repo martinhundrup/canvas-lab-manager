@@ -170,3 +170,6 @@ run_moss.sh
 
 # Ignore saved student code (ferpa protected)
 terms/*
+
+# ignore python environment
+/myenv/*

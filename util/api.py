@@ -5,6 +5,7 @@ import pathlib
 import shutil
 import zipfile
 import py7zr
+import re
 
 from canvasapi import Canvas
 from canvasapi.course import Course
@@ -207,91 +208,122 @@ def get_cumulative_score(course_instance: Course) -> pd.DataFrame:
     return pd.DataFrame(students)
 
 
-# Takes in file and makes it utf8 by default (so it can get processed in moss)
-def convert_to_text(path: pathlib.Path) -> None:
 
-    try:
-        with open(path.resolve(), 'r', encoding='utf16') as f:
-            text = f.read()
+def sanitize_path_component(component: str) -> str:
+    """
+    Sanitizes a file or directory name by removing or replacing problematic characters.
+    """
+    # Replace invalid characters with underscores
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', component)
 
-        # process Unicode text
+    # Ensure no control characters or leading/trailing whitespace
+    sanitized = sanitized.strip()
 
-        with open(path.resolve(), 'w', encoding='utf8') as f:
-            f.write(text)
-
-    except UnicodeError as e:
-        pass
-
-    return
+    # Truncate overly long file names (limit to 255 characters)
+    return sanitized[:255]
 
 
 def process_submission(code_dir: pathlib.Path, zip_type: bool = False, zip7_type: bool = False) -> None:
     if zip_type:
-        # Extract out the zip code
         try:
             with zipfile.ZipFile(code_dir.with_suffix('.zip'), 'r') as zip_ref:
-                zip_ref.extractall(code_dir)
-        except zipfile.BadZipfile as e:
-            print("Student {} failed to submit a valid zip!".format(code_dir.name))
-        # Remove zipped download
-        code_dir.with_suffix('.zip').unlink()
+                for zipinfo in zip_ref.infolist():
+                    # Sanitize file name
+                    sanitized_name = sanitize_path_component(zipinfo.filename)
+
+                    # Determine target path
+                    target_path = code_dir / sanitized_name
+
+                    # Handle path conflicts
+                    if target_path.exists() and not target_path.is_dir():
+                        print(f"Conflict detected for {target_path}. Renaming...")
+                        target_path = target_path.with_name(target_path.stem + '_conflict')
+
+                    # Ensure parent directories exist
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    # Extract file
+                    with open(target_path, 'wb') as f_out:
+                        f_out.write(zip_ref.read(zipinfo))
+        except zipfile.BadZipFile as e:
+            print(f"Invalid ZIP file for student {code_dir.name}: {e}")
+        finally:
+            # Remove the original ZIP file
+            code_dir.with_suffix('.zip').unlink(missing_ok=True)
 
     elif zip7_type:
         try:
             with py7zr.SevenZipFile(code_dir.with_suffix('.7z'), mode='r') as z:
-                z.extractall(code_dir)
-        except zipfile.BadZipfile as e:
-            print("Student {} failed to submit a valid zip!".format(code_dir.name))
-        # Remove zipped download
-        code_dir.with_suffix('.7z').unlink()
+                z.extractall(path=code_dir)
+        except Exception as e:
+            print(f"Invalid 7z file for student {code_dir.name}: {e}")
+        finally:
+            # Remove the original 7z file
+            code_dir.with_suffix('.7z').unlink(missing_ok=True)
 
-    # Check for empty archives
+    # Check for empty directories
     if not code_dir.is_dir():
+        print(f"Directory {code_dir} is missing or not created.")
         return
 
-    # Extract out one layer of zips if necessary
-    for path in code_dir.rglob('*.zip'):
-        # Some students submit dirs named '.zip' that aren't actually zips
-        if zipfile.is_zipfile(path.resolve()):
-            with zipfile.ZipFile(path, 'r') as zip_ref:
-                zip_ref.extractall(str(path.resolve())[0:-4])
+    # Extract nested ZIP files, if any
+    for nested_zip in code_dir.rglob('*.zip'):
+        if zipfile.is_zipfile(nested_zip):
+            try:
+                print(f"Processing nested ZIP: {nested_zip}")
+                with zipfile.ZipFile(nested_zip, 'r') as zip_ref:
+                    extract_target = nested_zip.parent / nested_zip.stem
+                    extract_target.mkdir(exist_ok=True)
+                    zip_ref.extractall(extract_target)
+            except Exception as e:
+                print(f"Error processing nested ZIP {nested_zip}: {e}")
+            finally:
+                # Remove the nested ZIP after extraction
+                nested_zip.unlink(missing_ok=True)
 
-    # Create temp dir for storing code
+    # Create a temporary directory for extracted code
     code_dir_tmp = pathlib.Path(str(code_dir.resolve()) + '-t')
     code_dir_tmp.mkdir(exist_ok=True)
 
-    # Now everything is extracted, search for .c files and put in sub dir
+    # Move valid code files (.c, .cpp) to the temporary directory
     file_types = ['.c', '.cpp']
-
     for file_type in file_types:
-        for path in code_dir.rglob('*' + file_type):
-            # Remove hidden file submissions
-            if '.' == path.name[0]:
+        for file_path in code_dir.rglob('*' + file_type):
+            # Skip hidden files or invalid entries
+            if file_path.name.startswith('.') or not file_path.is_file():
                 continue
 
-            # Do not include CMake files
-            if 'CMake' in path.name:
+            # Skip very small or corrupted files
+            if file_path.stat().st_size < 100:
+                print(f"Skipping small or corrupted file: {file_path}")
                 continue
 
-            # Case for students putting in PA1.c as a dir
-            if path.is_dir():
-                continue
+            # Ensure the file is text format
+            convert_to_text(file_path)
 
-            # Case for small corrupted files, 100 byte limit
-            # TODO: might wanna make dynamic later
-            if path.stat().st_size < 100:
-                continue
+            # Copy valid files to the temp directory
+            shutil.copy(file_path, code_dir_tmp)
 
-            # Make sure file is text only
-            convert_to_text(path)
-
-            shutil.copy(path, code_dir_tmp)  # For Python 3.8+.
-
-    # Remove base dir and switch tmp dir to primary dir
+    # Remove the original directory and rename the temp directory
     shutil.rmtree(code_dir)
-    code_dir_tmp.rename(str(code_dir_tmp.resolve())[0:-2])
+    code_dir_tmp.rename(code_dir)
+
+    print(f"Processing completed for: {code_dir}")
 
     return
+
+
+def convert_to_text(path: pathlib.Path) -> None:
+    """
+    Converts a file to UTF-8 encoding if necessary to ensure compatibility.
+    """
+    try:
+        with open(path, 'r', encoding='utf-16') as f_in:
+            content = f_in.read()
+        with open(path, 'w', encoding='utf-8') as f_out:
+            f_out.write(content)
+    except UnicodeError:
+        print(f"File {path} is not in UTF-16 format or conversion failed. Skipping conversion.")
 
 
 def download_submissions(course_instance: Course, course_dir: pathlib.Path,

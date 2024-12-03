@@ -18,10 +18,12 @@ def save_websites(moss_output: pathlib.Path, save_dir: pathlib.Path) -> None:
         # Load text
         moss_results = open(text_file.resolve(), 'r')
         moss_lines = moss_results.read().split('\n')
-
+        print("moss results:")
+        print(moss_results)
         # Get all urls
         url = None
         for line in moss_lines:
+            print('line:' + line)
             if 'http' in line:
                 url = line
 

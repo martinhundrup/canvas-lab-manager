@@ -54,18 +54,17 @@ def main():
 
     # Iterate through courses
     for i in api.get_courses():
-        # Check if new enrollment term is found
-        # Clear previous courses if so
+        if not hasattr(i, 'enrollment_term_id') or i.enrollment_term_id is None:
+            continue  # Skip courses without a valid enrollment term ID
+
         if i.enrollment_term_id > latest_course_id:
             latest_course_id = i.enrollment_term_id
             courses = dict()
             term_name = i.name
 
-        # Check if course is in latest term
         if i.enrollment_term_id != latest_course_id:
             continue
 
-        # Append courses to dict
         if i.course_code not in courses:
             courses[i.course_code] = list()
         courses[i.course_code].append(i.id)
@@ -81,8 +80,11 @@ def main():
     api.set_current_course(course, courses[course])
 
     # Create course dir
-    course_dir = pathlib.Path('terms') / term_name / course
+    #course_dir = pathlib.Path('terms') / term_name / course
+    course_dir = pathlib.Path('terms') / course
     course_dir.mkdir(exist_ok=True, parents=True)
+
+
     api.set_course_dir(course_dir)
 
     # Run actions

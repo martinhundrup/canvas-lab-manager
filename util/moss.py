@@ -20,48 +20,40 @@ def generate_moss(course_dir: pathlib.Path, assignments_list: list, language: st
     class_code = course_dir / 'assignments'
 
     # Open file (w to always clean it out beforehand)
-    f_out = open(moss_command_path.relative_to('.'), 'w')
+    with open(moss_command_path.relative_to('.'), 'w') as f_out:
+        for assignment in assignments_list:
+            # Write init code for moss commands
+            f_out.write(f'cd {class_code.relative_to(".")} \n')
+            f_out.write(f'../../../moss -d -l {language} -m 1000000 ')
+            f_out.write(f'-c "{assignment} in {course_dir.name}" ')
 
-    for assignment in assignments_list:
-        # Write init code for moss commands
-        f_out.write('cd {} \n'.format(class_code.relative_to('.')))
-        # TODO: Hard coded path to mass, change later
-        f_out.write('{} -d -l {} -m 1000000 '.format('../../../../moss', language))
-        f_out.write('-c "{a} in {c}" '.format(a=assignment, c=course_dir.name))
+            # Grab all allowed code files from the cleaned dir
+            code_files = (class_code / assignment).glob('**/*')
 
-        # Grab all allowed code files from the cleaned dir
-        code_files = (class_code / assignment).glob('**/*')
+            # Extract extensions and prepare file paths
+            extensions = dict()
+            for code_file in code_files:
+                if code_file.is_dir():
+                    continue
 
-        # Extract out the extensions
-        extensions = dict()
-        for code_file in code_files:
-            if code_file.is_dir():
-                continue
+                student_name = code_file.parent.name
 
-            student_name = code_file.parent.name
+                if student_name not in extensions:
+                    extensions[student_name] = set()
 
-            if student_name not in extensions:
-                extensions[student_name] = set()
+                extension = code_file.suffix
 
-            extension = code_file.suffix
+                if extension not in extensions[student_name]:
+                    extensions[student_name].add(extension)
+                    code_dir_path = str(code_file.relative_to(class_code).parent)
+                    code_dir_path = code_dir_path.replace(' ', '\\ ')
+                    f_out.write(code_dir_path + '/*' + extension + ' ')
 
-            if extension not in extensions[student_name]:
-                extensions[student_name].add(extension)
-                code_dir_path = str(code_file.relative_to(class_code).parent)
-                code_dir_path = code_dir_path.replace(' ', '\\ ')
-                code_dir_path = code_dir_path.replace("'", "\\'")
-                code_dir_path = code_dir_path.replace("(", "\\(")
-                code_dir_path = code_dir_path.replace(")", "\\)")
-                f_out.write(code_dir_path + '/*' + extension + ' ')
-
-        # Save results of moss runs to txt
-        f_out.write(' | tee {} \n'.format(str((moss_output_path / (assignment + '.txt')).resolve()).replace(' ', '\\ ')))
-        # TODO: Hard coded path to mass, change later
-        f_out.write('cd {} \n'.format('../../../..'))
-        f_out.write('\n')
-
-    # Close out the file
-    f_out.close()
+            # Save results of moss runs to txt
+            moss_output_file = moss_output_path / (assignment + '.txt')
+            f_out.write(f' | tee {str(moss_output_file.resolve()).replace(" ", "\\ ")} \n')
+            f_out.write('cd ../../.. \n')
+            f_out.write('\n')
 
     # Set file to be executable
     moss_command_path.chmod(moss_command_path.stat().st_mode | stat.S_IEXEC)
@@ -69,5 +61,6 @@ def generate_moss(course_dir: pathlib.Path, assignments_list: list, language: st
     print('=' * 40)
     print('MOSS CODE GENERATED')
     print('=' * 40)
+
 
     return
