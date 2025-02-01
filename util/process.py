@@ -36,62 +36,65 @@ def save_websites(moss_output: pathlib.Path, save_dir: pathlib.Path) -> None:
     return
 
 
-# Generate a set of results from the saved html pages
 def get_results(results_dir: pathlib.Path) -> dict:
-    # Main dictionary to return values in
     results = dict()
 
-    # Go through each assignment
     for assignment in results_dir.iterdir():
-        # Only go through html files
         if '.html' not in assignment.name:
             continue
 
         results[assignment.stem] = list()
 
-        # Open saved html file
         with open(assignment) as fp:
             soup = BeautifulSoup(fp, 'html.parser')
 
-        # Extract out lines matched from file
         matched_lines = list()
         for ind, lines in enumerate(soup.find_all('td')):
             if ind % 3 == 2:
                 matched_lines.append(int(lines.contents[0][0:-1]))
 
-        # Extract out the links from each file
         links = list()
         urls = list()
         for link in soup.find_all('a')[6:]:
             links.append(link.string)
             urls.append(link['href'])
 
-        # Extract out the relevant information
-        # name_1, name_2, percent_1, percent_2, lines_shared, urls
         for ind in range(int(len(links) / 2)):
             name_1 = links[ind*2].split(' ')[0]
-            ta_1 = name_1.split('/')[1]
-            student_1 = name_1.split('/')[2]
-
             name_2 = links[ind*2+1].split(' ')[0]
-            ta_2 = name_2.split('/')[1]
-            student_2 = name_2.split('/')[2]
+
+            # **Fix: Extract TA & Student Names Correctly (Shift Right)**
+            path_parts_1 = pathlib.Path(name_1).parts
+            path_parts_2 = pathlib.Path(name_2).parts
+
+            # Extracting TA & student names (moving one more level right)
+            if len(path_parts_1) >= 2:
+                ta_1, student_1 = path_parts_1[-2], path_parts_1[-1]
+            else:
+                ta_1, student_1 = "UNKNOWN_TA", "UNKNOWN_STUDENT"
+
+            if len(path_parts_2) >= 2:
+                ta_2, student_2 = path_parts_2[-2], path_parts_2[-1]
+            else:
+                ta_2, student_2 = "UNKNOWN_TA", "UNKNOWN_STUDENT"
 
             percent_1 = int(links[ind*2].split('%')[0].split('(')[1])
             percent_2 = int(links[ind*2+1].split('%')[0].split('(')[1])
             lines_shared = matched_lines[ind]
             url = urls[ind*2]
 
-            results[assignment.stem].append({'PA': assignment.stem,
-                                             'TA 1': ta_1, 'TA 2': ta_2,
-                                             'student 1': student_1, 'student 2': student_2,
-                                             'percent_1': percent_1, 'percent_2': percent_2,
-                                             'lines_matched': lines_shared, 'url': url})
+            results[assignment.stem].append({
+                'PA': assignment.stem,
+                'TA 1': ta_1, 'TA 2': ta_2,
+                'student 1': student_1, 'student 2': student_2,
+                'percent_1': percent_1, 'percent_2': percent_2,
+                'lines_matched': lines_shared, 'url': url
+            })
 
-        # Change dictionary to pandas dataframe
         results[assignment.stem] = pd.DataFrame(results[assignment.stem])
 
     return results
+
 
 
 def plot_histograms(class_name: pathlib.Path, results: dict) -> None:
